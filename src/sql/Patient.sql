@@ -9,8 +9,13 @@ CREATE TABLE profiles (
   city TEXT,
   district TEXT,
   role TEXT CHECK (role IN ('admin', 'patient')) DEFAULT 'patient',
+  last_message_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
+
+-- Note: To enable auto-delete after 7 days, run this in Supabase SQL Editor:
+-- SELECT cron.schedule('delete-old-messages', '0 0 * * *', $$ DELETE FROM public.messages WHERE created_at < NOW() - INTERVAL '7 days' $$);
+-- Or use a Database Webhook / Edge Function if pg_cron is not available.
 
 -- Tabel Pesan Chat
 CREATE TABLE messages (

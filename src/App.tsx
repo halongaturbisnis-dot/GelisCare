@@ -6,6 +6,7 @@ import { LoginPage } from '@/modules/auth/LoginPage';
 import { RegisterPage } from '@/modules/auth/RegisterPage';
 import { ChatPage } from '@/modules/chat/ChatPage';
 import { AdminDashboard } from '@/modules/dashboard/AdminDashboard';
+import { AdminChatInbox } from '@/modules/dashboard/AdminChatInbox';
 import { BroadcastPage } from '@/modules/broadcast/BroadcastPage';
 import { LogOut, MessageSquare, LayoutDashboard, Megaphone, User } from 'lucide-react';
 import { Button } from '@/components/UI';
@@ -35,6 +36,9 @@ const MainLayout = ({ children }: { children: React.ReactNode }) => {
             <>
               <Link to="/admin/dashboard" className="text-sm font-medium text-slate-600 hover:text-primary flex items-center gap-1">
                 <LayoutDashboard size={16} /> Dashboard
+              </Link>
+              <Link to="/admin/inbox" className="text-sm font-medium text-slate-600 hover:text-primary flex items-center gap-1">
+                <MessageSquare size={16} /> Chat Inbox
               </Link>
               <Link to="/admin/broadcast" className="text-sm font-medium text-slate-600 hover:text-primary flex items-center gap-1">
                 <Megaphone size={16} /> Broadcast
@@ -82,6 +86,12 @@ export default function App() {
           <Route path="/admin/dashboard" element={
             <ProtectedRoute role="admin">
               <MainLayout><AdminDashboard /></MainLayout>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/admin/inbox" element={
+            <ProtectedRoute role="admin">
+              <MainLayout><AdminChatInbox /></MainLayout>
             </ProtectedRoute>
           } />
 

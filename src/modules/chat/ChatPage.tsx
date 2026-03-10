@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useParams } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 import { Button, Input, Card, Skeleton } from '@/components/UI';
 import { cn } from '@/utils/ui';
-import { Send, Paperclip, Image as ImageIcon, FileText } from 'lucide-react';
+import { Send, Paperclip, Image as ImageIcon, FileText, ChevronLeft } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
@@ -11,26 +12,44 @@ import Swal from 'sweetalert2';
 
 export const ChatPage = () => {
   const { user, profile } = useAuth();
+  const { patientId } = useParams(); // For admin view
   const [messages, setMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
+  const [chatPartner, setChatPartner] = useState<any>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Determine who we are chatting with
+  const targetUserId = profile?.role === 'admin' ? patientId : null;
+
   useEffect(() => {
+    if (profile?.role === 'admin' && patientId) {
+      fetchPatientProfile();
+    }
     fetchMessages();
+    markAsRead();
+
     const subscription = supabase
       .channel('messages')
       .on('postgres_changes' as any, { event: 'INSERT', table: 'messages' }, (payload: any) => {
-        setMessages(prev => [...prev, payload.new]);
+        // Only add if it's relevant to this chat
+        const isRelevant = profile?.role === 'admin' 
+          ? (payload.new.sender_id === patientId || payload.new.receiver_id === patientId)
+          : (payload.new.sender_id === user?.id || payload.new.receiver_id === user?.id);
+        
+        if (isRelevant) {
+          setMessages(prev => [...prev, payload.new]);
+          markAsRead();
+        }
       })
       .subscribe();
 
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [patientId, user]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -38,22 +57,46 @@ export const ChatPage = () => {
     }
   }, [messages]);
 
+  const fetchPatientProfile = async () => {
+    const { data } = await supabase.from('profiles').select('*').eq('id', patientId).single();
+    setChatPartner(data);
+  };
+
   const fetchMessages = async () => {
-    const { data } = await supabase
-      .from('messages')
-      .select('*')
-      .order('created_at', { ascending: true });
+    let query = supabase.from('messages').select('*');
+    
+    if (profile?.role === 'admin' && patientId) {
+      query = query.or(`sender_id.eq.${patientId},receiver_id.eq.${patientId}`);
+    } else if (user) {
+      query = query.or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`);
+    }
+
+    const { data } = await query.order('created_at', { ascending: true });
     setMessages(data || []);
     setIsLoading(false);
+  };
+
+  const markAsRead = async () => {
+    if (!user) return;
+    
+    // Mark messages sent to me as read
+    const { error } = await supabase
+      .from('messages')
+      .update({ is_read: true })
+      .eq('receiver_id', user.id)
+      .eq('is_read', false);
   };
 
   const handleSendMessage = async (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!newMessage.trim() || !user) return;
 
+    const receiverId = profile?.role === 'admin' ? patientId : null;
+
     const optimisticMessage = {
       id: Math.random().toString(),
       sender_id: user.id,
+      receiver_id: receiverId,
       content: newMessage,
       created_at: new Date().toISOString(),
       is_optimistic: true,
@@ -65,9 +108,15 @@ export const ChatPage = () => {
     try {
       const { error } = await supabase.from('messages').insert({
         sender_id: user.id,
+        receiver_id: receiverId,
         content: newMessage,
       });
       if (error) throw error;
+
+      // Update last_message_at for the patient profile to bubble up in inbox
+      const profileToUpdate = profile?.role === 'admin' ? patientId : user.id;
+      await supabase.from('profiles').update({ last_message_at: new Date().toISOString() }).eq('id', profileToUpdate);
+
     } catch (error: any) {
       setMessages(prev => prev.filter(m => m.id !== optimisticMessage.id));
       Swal.fire('Error', 'Gagal mengirim pesan', 'error');
@@ -79,6 +128,8 @@ export const ChatPage = () => {
     if (!file || !user) return;
 
     setIsSending(true);
+    const receiverId = profile?.role === 'admin' ? patientId : null;
+
     try {
       const fileExt = file.name.split('.').pop();
       const fileName = `${Math.random()}.${fileExt}`;
@@ -96,10 +147,15 @@ export const ChatPage = () => {
 
       await supabase.from('messages').insert({
         sender_id: user.id,
+        receiver_id: receiverId,
         content: '',
         attachment_url: publicUrl,
         attachment_type: file.type.startsWith('image/') ? 'image' : 'file',
       });
+
+      const profileToUpdate = profile?.role === 'admin' ? patientId : user.id;
+      await supabase.from('profiles').update({ last_message_at: new Date().toISOString() }).eq('id', profileToUpdate);
+
     } catch (error: any) {
       Swal.fire('Error', 'Gagal mengunggah file', 'error');
     } finally {
@@ -112,11 +168,18 @@ export const ChatPage = () => {
       {/* Chat Header */}
       <div className="bg-white border-b border-black/5 p-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
+          {profile?.role === 'admin' && (
+            <button onClick={() => window.history.back()} className="p-1 hover:bg-slate-100 rounded-full transition-colors">
+              <ChevronLeft size={20} />
+            </button>
+          )}
           <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center text-primary font-bold">
-            {profile?.role === 'admin' ? 'P' : 'A'}
+            {profile?.role === 'admin' ? (chatPartner?.full_name?.charAt(0) || 'P') : 'A'}
           </div>
           <div>
-            <h2 className="font-bold text-sm">{profile?.role === 'admin' ? 'Pasien' : 'Admin GelisCare'}</h2>
+            <h2 className="font-bold text-sm">
+              {profile?.role === 'admin' ? (chatPartner?.full_name || 'Memuat...') : 'Admin GelisCare'}
+            </h2>
             <p className="text-xs text-green-500 flex items-center gap-1">
               <span className="w-2 h-2 bg-green-500 rounded-full"></span> Online
             </p>
