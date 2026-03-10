@@ -1,10 +1,36 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Button } from '@/components/UI';
-import { Heart, Stethoscope, Pill, Clock, MapPin, Phone } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+import { Button, Skeleton } from '@/components/UI';
+import { Heart, Stethoscope, Pill, Clock, MapPin, Phone, Star, ArrowRight } from 'lucide-react';
 import { motion } from 'motion/react';
 
+const iconMap: Record<string, any> = {
+  Stethoscope: <Stethoscope className="text-primary" />,
+  Heart: <Heart className="text-primary" />,
+  Pill: <Pill className="text-primary" />,
+};
+
 export const LandingPage = () => {
+  const [services, setServices] = useState<any[]>([]);
+  const [promos, setPromos] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    const [servicesRes, promosRes] = await Promise.all([
+      supabase.from('clinic_services').select('*').order('created_at', { ascending: true }),
+      supabase.from('promos').select('*').eq('is_active', true).order('created_at', { ascending: false })
+    ]);
+
+    setServices(servicesRes.data || []);
+    setPromos(promosRes.data || []);
+    setIsLoading(false);
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       {/* Navbar */}
@@ -15,8 +41,7 @@ export const LandingPage = () => {
         </div>
         <div className="hidden md:flex gap-8 text-sm font-medium text-slate-600">
           <a href="#layanan" className="hover:text-primary">Layanan</a>
-          <a href="#produk" className="hover:text-primary">Produk</a>
-          <a href="#kontak" className="hover:text-primary">Kontak</a>
+          <a href="#promo" className="hover:text-primary">Promo</a>
         </div>
         <div className="flex gap-4">
           <Link to="/login">
@@ -85,88 +110,46 @@ export const LandingPage = () => {
             <p className="text-slate-500 max-w-2xl mx-auto">Kami menyediakan berbagai layanan medis untuk memenuhi kebutuhan kesehatan Anda dan keluarga.</p>
           </div>
           <div className="grid md:grid-cols-3 gap-8">
-            <ServiceCard 
-              icon={<Stethoscope className="text-primary" />}
-              title="Poli Umum"
-              description="Pemeriksaan kesehatan rutin, pengobatan penyakit umum, dan konsultasi medis dasar."
-            />
-            <ServiceCard 
-              icon={<Heart className="text-primary" />}
-              title="Kesehatan Ibu & Anak"
-              description="Layanan imunisasi, pemeriksaan kehamilan, dan pemantauan tumbuh kembang anak."
-            />
-            <ServiceCard 
-              icon={<Pill className="text-primary" />}
-              title="Laboratorium & Farmasi"
-              description="Cek darah lengkap dan apotek yang menyediakan obat-obatan berkualitas."
-            />
+            {isLoading ? (
+              Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-64 w-full" />)
+            ) : (
+              services.map((service) => (
+                <ServiceCard 
+                  key={service.id}
+                  icon={iconMap[service.icon_name] || <Stethoscope className="text-primary" />}
+                  title={service.title}
+                  description={service.description}
+                />
+              ))
+            )}
           </div>
         </section>
 
-        {/* Products Section */}
-        <section id="produk" className="bg-slate-900 py-24 px-6 text-white">
+        {/* Promos Section */}
+        <section id="promo" className="bg-slate-900 py-24 px-6 text-white">
           <div className="max-w-6xl mx-auto">
             <div className="flex justify-between items-end mb-12">
               <div>
-                <h2 className="text-3xl font-bold mb-4">Produk Kesehatan</h2>
-                <p className="text-slate-400">Dapatkan produk kesehatan pilihan dari apotek kami.</p>
+                <h2 className="text-3xl font-bold mb-4">Promo Kesehatan</h2>
+                <p className="text-slate-400">Nikmati penawaran menarik untuk layanan kesehatan pilihan.</p>
               </div>
-              <Button variant="outline" className="border-white/20 text-white hover:bg-white/10">Lihat Semua</Button>
+              <Link to="/register">
+                <Button variant="outline" className="border-white/20 text-white hover:bg-white/10">Daftar Sekarang</Button>
+              </Link>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-              <ProductCard 
-                image="https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=400&q=80"
-                name="Vitamin C 1000mg"
-                price="Rp 45.000"
-              />
-              <ProductCard 
-                image="https://images.unsplash.com/photo-1587854692152-cbe660dbbb88?auto=format&fit=crop&w=400&q=80"
-                name="Masker Medis 3-Ply"
-                price="Rp 25.000"
-              />
-              <ProductCard 
-                image="https://images.unsplash.com/photo-1616671285410-095649f87720?auto=format&fit=crop&w=400&q=80"
-                name="Hand Sanitizer 500ml"
-                price="Rp 35.000"
-              />
-              <ProductCard 
-                image="https://images.unsplash.com/photo-1550572017-ed9a02799d53?auto=format&fit=crop&w=400&q=80"
-                name="Termometer Digital"
-                price="Rp 85.000"
-              />
-            </div>
-          </div>
-        </section>
-
-        {/* Contact Section */}
-        <section id="kontak" className="py-24 px-6 max-w-6xl mx-auto">
-          <div className="bg-primary rounded-3xl p-12 text-white flex flex-col md:flex-row gap-12 items-center">
-            <div className="flex-1">
-              <h2 className="text-4xl font-bold mb-6">Butuh Bantuan Medis?</h2>
-              <p className="text-white/80 mb-8 text-lg">Hubungi kami sekarang untuk konsultasi darurat atau janji temu dokter.</p>
-              <div className="space-y-4">
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center">
-                    <Phone size={20} />
-                  </div>
-                  <span>(021) 1234-5678</span>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center">
-                    <MapPin size={20} />
-                  </div>
-                  <span>Jl. Kesehatan No. 123, Jakarta Selatan</span>
-                </div>
-              </div>
-            </div>
-            <div className="bg-white p-8 rounded-2xl text-slate-900 w-full max-w-sm">
-              <h3 className="font-bold text-xl mb-4">Kirim Pesan Cepat</h3>
-              <div className="space-y-4">
-                <input className="w-full border border-black/10 rounded-md px-4 py-2 text-sm" placeholder="Nama Anda" />
-                <input className="w-full border border-black/10 rounded-md px-4 py-2 text-sm" placeholder="Nomor WhatsApp" />
-                <textarea className="w-full border border-black/10 rounded-md px-4 py-2 text-sm min-h-[100px]" placeholder="Pesan Anda" />
-                <Button className="w-full">Kirim Sekarang</Button>
-              </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {isLoading ? (
+                Array(2).fill(0).map((_, i) => <Skeleton key={i} className="h-80 w-full bg-white/5" />)
+              ) : (
+                promos.map((promo) => (
+                  <PromoCard 
+                    key={promo.id}
+                    image={promo.image_url}
+                    title={promo.title}
+                    description={promo.description}
+                  />
+                ))
+              )}
             </div>
           </div>
         </section>
@@ -190,12 +173,17 @@ const ServiceCard = ({ icon, title, description }: { icon: React.ReactNode, titl
   </div>
 );
 
-const ProductCard = ({ image, name, price }: { image: string, name: string, price: string }) => (
-  <div className="group cursor-pointer">
-    <div className="aspect-square rounded-xl overflow-hidden mb-4">
-      <img src={image} alt={name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" referrerPolicy="no-referrer" />
+const PromoCard = ({ image, title, description }: { image: string, title: string, description: string }) => (
+  <div className="group bg-white/5 rounded-2xl overflow-hidden border border-white/10 hover:border-primary/50 transition-all">
+    <div className="aspect-video overflow-hidden">
+      <img src={image} alt={title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" referrerPolicy="no-referrer" />
     </div>
-    <h4 className="font-bold text-sm mb-1">{name}</h4>
-    <p className="text-primary text-xs font-bold">{price}</p>
+    <div className="p-6">
+      <h4 className="font-bold text-xl mb-2">{title}</h4>
+      <p className="text-slate-400 text-sm mb-4 leading-relaxed">{description}</p>
+      <Link to="/register" className="text-primary font-bold text-sm flex items-center gap-2 group/link">
+        Ambil Promo <ArrowRight size={16} className="group-hover/link:translate-x-1 transition-transform" />
+      </Link>
+    </div>
   </div>
 );

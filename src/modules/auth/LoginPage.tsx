@@ -17,6 +17,30 @@ export const LoginPage = () => {
     showGlobalLoader();
 
     try {
+      // 0. Check for special Admin login
+      if (nik === 'Admin' && password === 'GedeListiana') {
+        // Find the admin user email from profiles
+        const { data: adminProfile, error: adminError } = await supabase
+          .from('profiles')
+          .select('email')
+          .eq('role', 'admin')
+          .limit(1)
+          .single();
+
+        if (adminError || !adminProfile) {
+          throw new Error('Akun Admin belum terkonfigurasi di database.');
+        }
+
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: adminProfile.email,
+          password: 'GedeListiana', // Assuming the admin user in Supabase Auth has this password
+        });
+
+        if (signInError) throw signInError;
+        navigate('/admin/dashboard');
+        return;
+      }
+
       // 1. Find email associated with NIK
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
@@ -56,7 +80,7 @@ export const LoginPage = () => {
       if (fullProfile.role === 'admin') {
         navigate('/admin/dashboard');
       } else {
-        navigate('/patient/chat');
+        navigate('/patient/dashboard');
       }
     } catch (error: any) {
       Swal.fire({
@@ -76,15 +100,15 @@ export const LoginPage = () => {
       <Card className="w-full max-w-md p-8">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold text-primary">Masuk GelisCare</h1>
-          <p className="text-slate-500 text-sm">Gunakan NIK dan Password Anda</p>
+          <p className="text-slate-500 text-sm">Gunakan NIK atau Username Admin</p>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
-            <label className="text-xs font-semibold uppercase text-slate-500 mb-1 block">NIK (KTP)</label>
+            <label className="text-xs font-semibold uppercase text-slate-500 mb-1 block">NIK / Username</label>
             <Input 
               required 
-              placeholder="16 digit NIK" 
+              placeholder="16 digit NIK atau 'Admin'" 
               value={nik}
               onChange={e => setNik(e.target.value)}
             />

@@ -8,7 +8,10 @@ import { ChatPage } from '@/modules/chat/ChatPage';
 import { AdminDashboard } from '@/modules/dashboard/AdminDashboard';
 import { AdminChatInbox } from '@/modules/dashboard/AdminChatInbox';
 import { BroadcastPage } from '@/modules/broadcast/BroadcastPage';
-import { LogOut, MessageSquare, LayoutDashboard, Megaphone, User } from 'lucide-react';
+import { ServiceManagement } from '@/modules/admin/ServiceManagement';
+import { PromoManagement } from '@/modules/admin/PromoManagement';
+import { PatientDashboard } from '@/modules/patient/PatientDashboard';
+import { LogOut, MessageSquare, LayoutDashboard, Megaphone, User, Settings, Star } from 'lucide-react';
 import { Button } from '@/components/UI';
 
 const ProtectedRoute = ({ children, role }: { children: React.ReactNode, role?: 'admin' | 'patient' }) => {
@@ -25,7 +28,7 @@ const MainLayout = ({ children }: { children: React.ReactNode }) => {
   const { profile, signOut } = useAuth();
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-slate-50">
       <nav className="border-b border-black/5 px-6 py-3 flex justify-between items-center bg-white sticky top-0 z-50">
         <Link to="/" className="flex items-center gap-2">
           <div className="w-8 h-8 bg-primary rounded-md flex items-center justify-center text-white font-bold">G</div>
@@ -38,16 +41,27 @@ const MainLayout = ({ children }: { children: React.ReactNode }) => {
                 <LayoutDashboard size={16} /> Dashboard
               </Link>
               <Link to="/admin/inbox" className="text-sm font-medium text-slate-600 hover:text-primary flex items-center gap-1">
-                <MessageSquare size={16} /> Chat Inbox
+                <MessageSquare size={16} /> Inbox
+              </Link>
+              <Link to="/admin/services" className="text-sm font-medium text-slate-600 hover:text-primary flex items-center gap-1">
+                <Settings size={16} /> Layanan
+              </Link>
+              <Link to="/admin/promos" className="text-sm font-medium text-slate-600 hover:text-primary flex items-center gap-1">
+                <Star size={16} /> Promo
               </Link>
               <Link to="/admin/broadcast" className="text-sm font-medium text-slate-600 hover:text-primary flex items-center gap-1">
                 <Megaphone size={16} /> Broadcast
               </Link>
             </>
           ) : (
-            <Link to="/patient/chat" className="text-sm font-medium text-slate-600 hover:text-primary flex items-center gap-1">
-              <MessageSquare size={16} /> Chat
-            </Link>
+            <>
+              <Link to="/patient/dashboard" className="text-sm font-medium text-slate-600 hover:text-primary flex items-center gap-1">
+                <LayoutDashboard size={16} /> Dashboard
+              </Link>
+              <Link to="/patient/chat" className="text-sm font-medium text-slate-600 hover:text-primary flex items-center gap-1">
+                <MessageSquare size={16} /> Chat
+              </Link>
+            </>
           )}
           <div className="h-6 w-[1px] bg-black/5"></div>
           <div className="flex items-center gap-3">
@@ -77,6 +91,12 @@ export default function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           
+          <Route path="/patient/dashboard" element={
+            <ProtectedRoute role="patient">
+              <MainLayout><PatientDashboard /></MainLayout>
+            </ProtectedRoute>
+          } />
+
           <Route path="/patient/chat" element={
             <ProtectedRoute role="patient">
               <MainLayout><ChatPage /></MainLayout>
@@ -92,6 +112,18 @@ export default function App() {
           <Route path="/admin/inbox" element={
             <ProtectedRoute role="admin">
               <MainLayout><AdminChatInbox /></MainLayout>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/admin/services" element={
+            <ProtectedRoute role="admin">
+              <MainLayout><ServiceManagement /></MainLayout>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/admin/promos" element={
+            <ProtectedRoute role="admin">
+              <MainLayout><PromoManagement /></MainLayout>
             </ProtectedRoute>
           } />
 
