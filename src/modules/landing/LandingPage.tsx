@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/hooks/useAuth';
 import { Button, Skeleton } from '@/components/UI';
-import { Heart, Stethoscope, Pill, Clock, MapPin, Phone, Star, ArrowRight } from 'lucide-react';
+import { Heart, Stethoscope, Pill, Clock, MapPin, Phone, Star, ArrowRight, Lock } from 'lucide-react';
 import { motion } from 'motion/react';
 
 const iconMap: Record<string, any> = {
@@ -12,6 +13,7 @@ const iconMap: Record<string, any> = {
 };
 
 export const LandingPage = () => {
+  const { user } = useAuth();
   const [services, setServices] = useState<any[]>([]);
   const [promos, setPromos] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -40,16 +42,28 @@ export const LandingPage = () => {
           <span className="text-xl font-bold text-primary">GelisCare Clinic</span>
         </div>
         <div className="hidden md:flex gap-8 text-sm font-medium text-slate-600">
-          <a href="#layanan" className="hover:text-primary">Layanan</a>
-          <a href="#promo" className="hover:text-primary">Promo</a>
+          {user && (
+            <>
+              <a href="#layanan" className="hover:text-primary">Layanan</a>
+              <a href="#promo" className="hover:text-primary">Promo</a>
+            </>
+          )}
         </div>
         <div className="flex gap-4">
-          <Link to="/login">
-            <Button variant="ghost">Masuk</Button>
-          </Link>
-          <Link to="/register">
-            <Button>Daftar Pasien</Button>
-          </Link>
+          {user ? (
+            <Link to={user.email?.includes('admin') ? '/admin/dashboard' : '/patient/dashboard'}>
+              <Button>Dashboard</Button>
+            </Link>
+          ) : (
+            <>
+              <Link to="/login">
+                <Button variant="ghost">Masuk</Button>
+              </Link>
+              <Link to="/register">
+                <Button>Daftar Pasien</Button>
+              </Link>
+            </>
+          )}
         </div>
       </nav>
 
@@ -71,12 +85,20 @@ export const LandingPage = () => {
                 GelisCare Clinic menyediakan layanan kesehatan primer yang komprehensif dengan tenaga medis profesional dan fasilitas modern untuk keluarga Anda.
               </p>
               <div className="flex flex-wrap gap-4">
-                <Link to="/register">
-                  <Button className="px-8 py-3 text-lg">Daftar Antrean Online</Button>
-                </Link>
-                <a href="#layanan">
-                  <Button variant="outline" className="px-8 py-3 text-lg">Lihat Layanan</Button>
-                </a>
+                {!user && (
+                  <Link to="/register">
+                    <Button className="px-8 py-3 text-lg">Daftar Antrean Online</Button>
+                  </Link>
+                )}
+                {user ? (
+                  <a href="#layanan">
+                    <Button variant="outline" className="px-8 py-3 text-lg">Lihat Layanan</Button>
+                  </a>
+                ) : (
+                  <Link to="/login">
+                    <Button variant="outline" className="px-8 py-3 text-lg">Masuk untuk Lihat Layanan</Button>
+                  </Link>
+                )}
               </div>
             </motion.div>
             <motion.div
@@ -103,56 +125,81 @@ export const LandingPage = () => {
           </div>
         </section>
 
-        {/* Services Section */}
-        <section id="layanan" className="py-24 px-6 max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold mb-4">Jenis Pelayanan Kami</h2>
-            <p className="text-slate-500 max-w-2xl mx-auto">Kami menyediakan berbagai layanan medis untuk memenuhi kebutuhan kesehatan Anda dan keluarga.</p>
-          </div>
-          <div className="grid md:grid-cols-3 gap-8">
-            {isLoading ? (
-              Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-64 w-full" />)
-            ) : (
-              services.map((service) => (
-                <ServiceCard 
-                  key={service.id}
-                  icon={iconMap[service.icon_name] || <Stethoscope className="text-primary" />}
-                  title={service.title}
-                  description={service.description}
-                />
-              ))
-            )}
-          </div>
-        </section>
-
-        {/* Promos Section */}
-        <section id="promo" className="bg-slate-900 py-24 px-6 text-white">
-          <div className="max-w-6xl mx-auto">
-            <div className="flex justify-between items-end mb-12">
-              <div>
-                <h2 className="text-3xl font-bold mb-4">Promo Kesehatan</h2>
-                <p className="text-slate-400">Nikmati penawaran menarik untuk layanan kesehatan pilihan.</p>
+        {user ? (
+          <>
+            {/* Services Section */}
+            <section id="layanan" className="py-24 px-6 max-w-6xl mx-auto">
+              <div className="text-center mb-16">
+                <h2 className="text-3xl font-bold mb-4">Jenis Pelayanan Kami</h2>
+                <p className="text-slate-500 max-w-2xl mx-auto">Kami menyediakan berbagai layanan medis untuk memenuhi kebutuhan kesehatan Anda dan keluarga.</p>
               </div>
-              <Link to="/register">
-                <Button variant="outline" className="border-white/20 text-white hover:bg-white/10">Daftar Sekarang</Button>
-              </Link>
+              <div className="grid md:grid-cols-3 gap-8">
+                {isLoading ? (
+                  Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-64 w-full" />)
+                ) : (
+                  services.map((service) => (
+                    <ServiceCard 
+                      key={service.id}
+                      icon={iconMap[service.icon_name] || <Stethoscope className="text-primary" />}
+                      title={service.title}
+                      description={service.description}
+                    />
+                  ))
+                )}
+              </div>
+            </section>
+
+            {/* Promos Section */}
+            <section id="promo" className="bg-slate-900 py-24 px-6 text-white">
+              <div className="max-w-6xl mx-auto">
+                <div className="flex justify-between items-end mb-12">
+                  <div>
+                    <h2 className="text-3xl font-bold mb-4">Promo Kesehatan</h2>
+                    <p className="text-slate-400">Nikmati penawaran menarik untuk layanan kesehatan pilihan.</p>
+                  </div>
+                  <Link to="/register">
+                    <Button variant="outline" className="border-white/20 text-white hover:bg-white/10">Daftar Sekarang</Button>
+                  </Link>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  {isLoading ? (
+                    Array(2).fill(0).map((_, i) => <Skeleton key={i} className="h-80 w-full bg-white/5" />)
+                  ) : (
+                    promos.map((promo) => (
+                      <PromoCard 
+                        key={promo.id}
+                        image={promo.image_url}
+                        title={promo.title}
+                        description={promo.description}
+                      />
+                    ))
+                  )}
+                </div>
+              </div>
+            </section>
+          </>
+        ) : (
+          <section className="py-24 px-6 bg-slate-50 border-y border-black/5">
+            <div className="max-w-4xl mx-auto text-center">
+              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center text-primary mx-auto mb-6">
+                <Lock size={32} />
+              </div>
+              <h2 className="text-3xl font-bold text-slate-900 mb-4">Informasi Terbatas</h2>
+              <p className="text-slate-600 mb-8 text-lg">
+                Daftar Layanan dan Promo Spesial kami hanya dapat diakses oleh pasien terdaftar. 
+                Silakan masuk atau daftar akun baru untuk melihat penawaran terbaik kami.
+              </p>
+              <div className="flex justify-center gap-4">
+                <Link to="/login">
+                  <Button className="px-8">Masuk Sekarang</Button>
+                </Link>
+                <Link to="/register">
+                  <Button variant="outline" className="px-8">Daftar Akun</Button>
+                </Link>
+              </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {isLoading ? (
-                Array(2).fill(0).map((_, i) => <Skeleton key={i} className="h-80 w-full bg-white/5" />)
-              ) : (
-                promos.map((promo) => (
-                  <PromoCard 
-                    key={promo.id}
-                    image={promo.image_url}
-                    title={promo.title}
-                    description={promo.description}
-                  />
-                ))
-              )}
-            </div>
-          </div>
-        </section>
+          </section>
+        )}
       </main>
 
       {/* Footer */}
