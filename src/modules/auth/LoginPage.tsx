@@ -19,24 +19,34 @@ export const LoginPage = () => {
     try {
       // 0. Check for special Admin login
       if (nik === 'Admin' && password === 'GedeListiana') {
-        // Find the admin user email from profiles
-        const { data: adminProfile, error: adminError } = await supabase
+        // We assume the admin email is admin@geliscare.com if not found in profiles
+        // This allows the admin to login even if the profile record is missing initially
+        let adminEmail = 'admin@geliscare.com';
+        
+        const { data: adminProfile } = await supabase
           .from('profiles')
           .select('email')
           .eq('role', 'admin')
           .limit(1)
           .single();
 
-        if (adminError || !adminProfile) {
-          throw new Error('Akun Admin belum terkonfigurasi di database.');
+        if (adminProfile?.email) {
+          adminEmail = adminProfile.email;
         }
 
         const { error: signInError } = await supabase.auth.signInWithPassword({
-          email: adminProfile.email,
-          password: 'GedeListiana', // Assuming the admin user in Supabase Auth has this password
+          email: adminEmail,
+          password: 'GedeListiana',
         });
 
-        if (signInError) throw signInError;
+        if (signInError) {
+          // If sign in fails, it might be because the user doesn't exist in Auth yet
+          if (signInError.message.includes('Invalid login credentials')) {
+            throw new Error('Kredensial Admin salah atau akun Admin belum dibuat di Supabase Auth.');
+          }
+          throw signInError;
+        }
+        
         navigate('/admin/dashboard');
         return;
       }
