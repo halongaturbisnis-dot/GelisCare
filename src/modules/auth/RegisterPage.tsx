@@ -25,38 +25,34 @@ export const RegisterPage = () => {
     showGlobalLoader();
 
     try {
-      // 1. Sign Up Auth (using email as identifier for Supabase Auth)
-      const { data: authData, error: authError } = await supabase.auth.signUp({
+      // Custom Registration Logic: Insert directly into profiles table
+      // This bypasses Supabase Auth and its rate limits
+      const { error: profileError } = await supabase.from('profiles').insert({
+        nik: form.nik,
         email: form.email,
-        password: form.password,
+        password: form.password, // Plain text for demo simplicity
+        full_name: form.fullName,
+        phone: form.phone,
+        province: form.province,
+        city: form.city,
+        district: form.district,
+        role: 'patient',
       });
 
-      if (authError) throw authError;
-
-      if (authData.user) {
-        // 2. Create Profile
-        const { error: profileError } = await supabase.from('profiles').insert({
-          id: authData.user.id,
-          nik: form.nik,
-          email: form.email,
-          full_name: form.fullName,
-          phone: form.phone,
-          province: form.province,
-          city: form.city,
-          district: form.district,
-          role: 'patient',
-        });
-
-        if (profileError) throw profileError;
-
-        Swal.fire({
-          icon: 'success',
-          title: 'Registrasi Berhasil',
-          text: 'Akun Anda telah terdaftar. Silakan masuk.',
-          confirmButtonColor: '#006E62',
-        });
-        navigate('/login');
+      if (profileError) {
+        if (profileError.message.includes('duplicate key')) {
+          throw new Error('NIK sudah terdaftar.');
+        }
+        throw profileError;
       }
+
+      Swal.fire({
+        icon: 'success',
+        title: 'Registrasi Berhasil',
+        text: 'Akun Anda telah terdaftar. Silakan masuk.',
+        confirmButtonColor: '#006E62',
+      });
+      navigate('/login');
     } catch (error: any) {
       Swal.fire({
         icon: 'error',

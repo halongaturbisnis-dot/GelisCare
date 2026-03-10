@@ -1,49 +1,45 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
-import { User } from '@supabase/supabase-js';
 
 interface AuthContextType {
-  user: User | null;
+  user: any | null;
   profile: any | null;
   isLoading: boolean;
-  signOut: () => Promise<void>;
+  signOut: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<any | null>(null);
   const [profile, setProfile] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const fetchProfile = async (userId: string) => {
-      const { data } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
-      setProfile(data);
+    const checkSession = () => {
+      const savedUser = localStorage.getItem('geliscare_user');
+      if (savedUser) {
+        const userData = JSON.parse(savedUser);
+        setUser(userData);
+        setProfile(userData);
+      } else {
+        setUser(null);
+        setProfile(null);
+      }
+      setIsLoading(false);
     };
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      if (session?.user) fetchProfile(session.user.id);
-      setIsLoading(false);
-    });
+    checkSession();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      if (session?.user) fetchProfile(session.user.id);
-      else setProfile(null);
-      setIsLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
+    // Listen for storage changes (optional, but good for multi-tab)
+    window.addEventListener('storage', checkSession);
+    return () => window.removeEventListener('storage', checkSession);
   }, []);
 
-  const signOut = async () => {
-    await supabase.auth.signOut();
+  const signOut = () => {
+    localStorage.removeItem('geliscare_user');
+    setUser(null);
+    setProfile(null);
+    window.location.href = '/login';
   };
 
   return (

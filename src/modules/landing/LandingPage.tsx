@@ -47,7 +47,7 @@ export const LandingPage = () => {
         </div>
         <div className="flex gap-4">
           {user ? (
-            <Link to={user.email?.includes('admin') ? '/admin/dashboard' : '/patient/dashboard'}>
+            <Link to={user.role === 'admin' ? '/admin/dashboard' : '/patient/dashboard'}>
               <Button>Dashboard</Button>
             </Link>
           ) : (

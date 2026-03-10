@@ -17,77 +17,22 @@ export const LoginPage = () => {
     showGlobalLoader();
 
     try {
-      // 0. Check for special Admin login
-      if (nik === 'Admin' && password === 'GedeListiana') {
-        // We assume the admin email is admin@geliscare.com if not found in profiles
-        // This allows the admin to login even if the profile record is missing initially
-        let adminEmail = 'admin@geliscare.com';
-        
-        const { data: adminProfile } = await supabase
-          .from('profiles')
-          .select('email')
-          .eq('role', 'admin')
-          .limit(1)
-          .single();
-
-        if (adminProfile?.email) {
-          adminEmail = adminProfile.email;
-        }
-
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email: adminEmail,
-          password: 'GedeListiana',
-        });
-
-        if (signInError) {
-          // If sign in fails, it might be because the user doesn't exist in Auth yet
-          if (signInError.message.includes('Invalid login credentials')) {
-            throw new Error('Kredensial Admin salah atau akun Admin belum dibuat di Supabase Auth.');
-          }
-          throw signInError;
-        }
-        
-        navigate('/admin/dashboard');
-        return;
-      }
-
-      // 1. Find email associated with NIK
-      const { data: profileData, error: profileError } = await supabase
+      // Custom Auth Logic: Query profiles table directly
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('id, role')
+        .select('*')
         .eq('nik', nik)
+        .eq('password', password)
         .single();
 
-      if (profileError || !profileData) {
-        throw new Error('NIK tidak terdaftar.');
+      if (profileError || !profile) {
+        throw new Error('NIK atau Password salah.');
       }
 
-      // Since Supabase Auth needs email, we need to get the email from auth.users
-      // However, client-side we can't easily query auth.users by ID.
-      // Workaround: In registration, we could have stored the email in profiles too, 
-      // or we can use a specific format if we want to be strict.
-      // Let's assume we need to fetch the email from the profile if we had stored it.
-      // For this implementation, I'll add 'email' to the profiles table to make NIK login easier.
+      // Store session in localStorage for demo simplicity
+      localStorage.setItem('geliscare_user', JSON.stringify(profile));
       
-      // Re-fetching with email (I will update the schema in the next step)
-      const { data: fullProfile, error: emailError } = await supabase
-        .from('profiles')
-        .select('email, role')
-        .eq('nik', nik)
-        .single();
-
-      if (emailError || !fullProfile?.email) {
-        throw new Error('Data login tidak valid.');
-      }
-
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: fullProfile.email,
-        password,
-      });
-
-      if (error) throw error;
-
-      if (fullProfile.role === 'admin') {
+      if (profile.role === 'admin') {
         navigate('/admin/dashboard');
       } else {
         navigate('/patient/dashboard');
