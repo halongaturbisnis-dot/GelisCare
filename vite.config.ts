@@ -12,7 +12,7 @@ export default defineConfig(({mode}) => {
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
-        includeAssets: ['favicon.ico'],
+        includeAssets: ['favicon.svg'],
         manifest: {
           name: 'GelisCare',
           short_name: 'GelisCare',
@@ -20,9 +20,9 @@ export default defineConfig(({mode}) => {
           theme_color: '#006E62',
           icons: [
             {
-              src: 'favicon.ico',
-              sizes: '64x64',
-              type: 'image/x-icon'
+              src: 'favicon.svg',
+              sizes: 'any',
+              type: 'image/svg+xml'
             }
           ]
         }
